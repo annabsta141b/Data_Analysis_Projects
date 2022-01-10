@@ -1,0 +1,238 @@
+---
+title: "Project2"
+author: "Ana Boeriu"
+date: "3/2/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#setwd("/Users/anab/Local Documents/UC Davis/Year 3/STA 138 Melcon/projects/project2")
+data = read.csv("/Users/anab/LocalDocuments/UCDavis/Year 3/STA 138 Melcon/projects/project2/angina.csv")
+attach(data)
+```
+```{r}
+table(data$smoke,data$y)
+table(data$diabetes,data$y)
+```
+
+```{r}
+library(ggplot2)
+ggplot(data,aes(cig,fill=y))+geom_histogram()+xlab("Number of Cigarettes Smoked Per Day")+
+ylab("Number of Patients")+ggtitle("Cigarette Smoking in Sample")+theme_bw()+
+facet_grid(y~.,)
+ 
+```
+```{r}
+ggplot(data,aes(age,fill=y))+
+  geom_histogram()+
+  xlab("Patient Age")+
+  ylab("Number of Patients")+
+  ggtitle("Sample Age Ranges")+
+  theme_bw()+
+  facet_grid(y~.,)+
+  scale_y_continuous(breaks = seq(0, 12, by= 4))+
+  ggsave("SAMPLE age range.png",height=4,width=5)
+  
+```
+
+
+
+
+```{r}
+hist(age,breaks=20)
+hist(cig, breaks=20)
+table(cig,y)   #cigarettes certainly SEEM to up your chances
+table(diabetes,y) #note mu ij less than 5
+table(strokefam,y)
+table(myofam,y)
+table(hyper,y)  #mu ij less than 5
+#cig and age are both not going to have mu ij > 5 for all, either.
+
+plot(data)
+#There is some evidence of relationships between predictor variables:
+#high blood pressure appears to have a restricted age range compared to low.
+table(diabetes)  #only 9 patients had diabetes, so this is probably not going to be very helpful.
+table(smoke)  #reasonable distribution here.
+table(strokefam)  #again, 12 is a little low, but maybe it's useful.
+table(hyper)  #same
+table(y)	#so we know how our sample was chosen, 100 of each.
+table(myofam)  #reasonable dist
+
+hist(cig,breaks=30)  #according to Google results, a pack of cigarettes is usually 20 cigarettes in the US.
+#So our results peaking in breaks of 10 is probably not surprising, nor is the second largest result being
+#1 pack.
+ha = data[which(y==1),]
+nh = data[which(y==0),]
+hist(ha$cig)
+hist(nh$cig)   #←- maybe combine into one histogram?
+
+
+```
+```{r}
+full.model = glm(y~.,data = data,family=binomial(link=logit))
+summary(full.model)
+
+```
+```{r}
+
+library(LogisticDx)
+good.stuff = dx(full.model)
+good.stuff = as.data.frame(good.stuff) #Convert to dataframe because of annoying things
+pear.r = good.stuff$Pr #Pearsons Residuals
+std.r = good.stuff$sPr #Standardized residuals (Pearson)
+df.beta = good.stuff$dBhat #DF Beta for removing each observation
+change.pearson = good.stuff$dChisq #Change in pearson X^2 for each observation
+hist(std.r, main = "Pearson Standardized Residuals")
+which(abs(std.r)>3)
+data[which(abs(std.r)>3),]
+
+```
+```{r}
+hist(df.beta)
+which(df.beta > 0.3)
+data[which(df.beta>0.3),]
+
+```
+```{r}
+empty.model = glm(y~1, data = data, family=binomial(link=logit))
+
+full.model = glm(y~.,data = data,family=binomial(link=logit))
+BIC.select.F = step(empty.model,scope = list(lower = empty.model, upper = full.model),direction = "both",criterion = "BIC",trace=FALSE)
+BIC.select.F$formula
+
+y ~ smoke + age + myofam + hyper + cig
+
+BIC.select.B = step(full.model,scope = list(lower = empty.model, upper = full.model),direction = "both",criterion = "BIC",trace=FALSE)
+BIC.select.B$formula
+
+AIC.select.F = step(empty.model,scope = list(lower = empty.model, upper = full.model),direction = "both",criterion = "AIC",trace=FALSE)
+AIC.select.F$formula
+
+AIC.select = step(full.model,scope = list(lower = empty.model, upper = full.model),direction = "both",criterion = "AIC",trace=FALSE)
+AIC.select$formula
+
+
+y = data$y
+data = data[,-1]
+data$y=y
+
+library(bestglm)
+best.subset.BIC = bestglm(Xy = data, family = binomial(link=logit),IC = "BIC",method = "exhaustive")
+best.subset.BIC
+
+best.subset.AIC = bestglm(Xy = data, family = binomial(link=logit),IC = "AIC",method = "exhaustive")
+best.subset.AIC
+
+#So all methods agree- the best model is y~age+smoke+cig+hyper+myofam
+
+
+our.model = glm(AIC.select$formula,data=data,family=binomial(link=logit))
+our.model
+
+```
+
+```{r}
+#There are unusual points in the data.
+which(abs(std.r)>3)
+data[which(abs(std.r)>3),]
+
+  
+hist(df.beta)
+which(df.beta > 0.3)
+data[which(df.beta>0.3),]  
+
+#The overlap ends up being 161, so we remove it.
+
+#Remember to remove the data points discussed!!!!!
+model1 = glm(y ~ age + smoke + cig + hyper + myofam + age*smoke,data=data,family=binomial(link=logit))
+BIC(model1)
+BIC(our.model)
+#not an improvement.
+
+model2 = glm(y ~ age + smoke + cig + hyper + myofam + age*cig,data=data,family=binomial(link=logit))
+BIC(model2)
+BIC(our.model)
+#not an improvement
+
+model3 = glm(y ~ age + smoke + cig + hyper + myofam + age*hyper,data=data,family=binomial(link=logit))
+BIC(model3)
+BIC(our.model)
+#Not an improvement
+
+model4 = glm(y ~ age + smoke + cig + hyper + myofam + age*myofam,data=data,family=binomial(link=logit))
+BIC(model4)
+BIC(our.model)
+#no change.
+
+model5 = glm(y ~ age + smoke + cig + hyper + myofam + smoke*cig,data=data,family=binomial(link=logit))
+BIC(model5)
+BIC(our.model)
+#no change.
+
+model6 = glm(y ~ age + smoke + cig + hyper + myofam + smoke*hyper,data=data,family=binomial(link=logit))
+BIC(model6)
+BIC(our.model)
+#no improvement.
+
+model7 = glm(y ~ age + smoke + cig + hyper + myofam + smoke*myofam,data=data,family=binomial(link=logit))
+BIC(model7)
+BIC(our.model)
+#no improvement
+
+model8 = glm(y ~ age + smoke + cig + hyper + myofam + cig*hyper,data=data,family=binomial(link=logit))
+BIC(model8)
+BIC(our.model)
+#no improvement
+
+model9 = glm(y ~ age + smoke + cig + hyper + myofam + cig*myofam,data=data,family=binomial(link=logit))
+BIC(model9)
+BIC(our.model)
+#no improvement
+
+model10 = glm(y ~ age + smoke + cig + hyper + myofam + hyper*myofam,data=data,family=binomial(link=logit))
+BIC(model10)
+BIC(our.model)
+#no improvement.
+
+#So as far as model correctness goes, there doesn't seem to be a reason to add any interaction terms.
+
+#Testing and CI’s: We know that we should NOT do Wald to this model, because we’ve kept factors with more than 2 levels (smoke, hyper).
+
+#IV: Interpretation: Interpret the coefficients and any confidence intervals or p-values that you calculated.
+
+#V: Prediction: Predict ^, and report back measures of prediction. Consider model goodness-of-fit measures,
+#error matrices, etc. If you choose Problem 2: Based on your "best" model, i.e, you may not use all of these
+#values, predict the probability of angina for a 50 year old who has never smoked, with history of hypertension,
+#angina, and stroke (and no other history of medical issues).
+
+#Prediction:
+predict(our.model,newdata = data.frame(age=50,smoke="never",cig=0,hyper="moderate",myofam="yes"),type="response")
+predict(our.model,newdata = data.frame(age=50,smoke="never",cig=0,hyper="mild",myofam="yes"),type="response")
+
+```
+```{r}
+predict(our.model,newdata = data.frame(age=50,smoke="never",cig=0,hyper="moderate",myofam="yes"),type="response")
+
+ predict(our.model,newdata = data.frame(age=50,smoke="never",cig=0,hyper="mild",myofam="yes"),type="response")
+ 
+ confint(our.model, level = 1-0.05)
+library(pROC)
+my.auc = auc(our.model$y,fitted(our.model),plot = TRUE,legacy.axes = TRUE)
+My.auc
+
+```
+
+
+```{r}
+PRE:
+r = cor(our.model$y, our.model$fitted.values)
+r
+prop.red = 1- sum((our.model$y -our.model$fitted.values)^2)/sum((our.model$y - mean(our.model$y))^2)
+prop.red
+```
+
+
+
+
+

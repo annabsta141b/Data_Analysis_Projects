@@ -1,0 +1,81 @@
+---
+title: "138 Proj1"
+author: "Ana Boeriu"
+date: "2/3/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+setwd("/Users/anab/Local Documents/UC Davis/Year 3/STA 138 Melcon/projects/project1")
+blood = read.csv("btype.csv")
+sportAinjury = read.csv("compare.csv")
+```
+
+```{r}
+names(blood)
+table(blood)
+nrow(blood)
+```
+```{r}
+table1 = table(blood)
+n1 = sum(table1)
+prop1 = table1/n1
+prop1
+```
+```{r}
+library(ggplot2)
+library(viridis)
+ggplot(data=blood,aes(x=blood$group,fill=blood$group))+
+geom_bar()+xlab("Blood Type")+
+ylab("Number of Subjects")+
+geom_text(stat='count', aes(label=..count..), vjust=-0)+
+ggtitle("Sample Blood Types")+
+scale_fill_viridis_d(begin=.25, name = "Blood Types")+
+theme_bw()+
+ggsave("blood summary.png", height = 4,width = 5)
+```
+Part 2
+
+```{r}
+nrow(sportAinjury)
+summary(sportAinjury)
+```
+```{r}
+table2 = table(sportAinjury$sport,sportAinjury$injury)
+table2
+```
+
+```{r}
+library(ggplot2)
+library(viridis)
+ggplot(data=sportAinjury,aes(x=sportAinjury$injury,fill=sportAinjury$sport))+
+geom_bar(position = "dodge")+
+xlab("Type of Injury")+
+ylab("Number of Subjects")+
+geom_text(stat='count', aes(label=..count..),position=position_dodge(0.9), vjust=-0.5)+
+ggtitle("Injury Incedent by Sport")+
+scale_fill_viridis_d(begin=.25, name = "Sport")+
+theme_bw()+
+ggsave("sport.png", height = 4,width = 5)
+```
+```{r}
+names(sportAinjury)
+nrow(sportAinjury)
+partitioned_table = table(sportAinjury)
+partitioned_table
+```
+Partiton part 
+```{r}
+rowSums(partitioned_table)
+partitioned_table[,c(1,2)]
+rowSums(partitioned_table[,c(1,2)])
+partitioned_table[,-c(1,2)]
+cbind(BrokenBoneAConcussion=rowSums(partitioned_table[,c(1,2)]), partitioned_table[,-c(1,2)])
+```
+```{r}
+library(reshape2)
+table.long = melt(table2,vars="sport")
+table.long
+```
+
