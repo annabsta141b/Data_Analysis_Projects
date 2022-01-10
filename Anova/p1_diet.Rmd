@@ -1,0 +1,154 @@
+---
+title: "project 1 diet"
+author: "Ana Boeriu"
+date: "2/5/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+loseit = read.csv("~/Documents/UC Davis/Year 2/STA 106/datasets /loseit.csv")
+```
+
+## summary stat
+```{r}
+summary(loseit)
+aggregate(Loss ~ Diet, data = loseit, mean)
+aggregate(Loss ~ Diet, data = loseit, sd)
+sd(loseit$Diet)
+```
+
+### histogram
+```{r}
+ggplot(loseit, aes(x = Loss)) + geom_histogram(binwidth = 0.5) + facet_grid(Diet ~.) +ggtitle("Weight Loss by Diet")
+```
+### Boxplot
+```{r}
+boxplot(Loss ~ Diet, data = loseit, main = "Weight Loss by Diet", horizontal = TRUE)
+```
+
+###Diagnostics
+```{r}
+loseit.model = lm(Loss ~ Diet, data = loseit)
+loseit$ei = loseit.model$residuals
+
+nt = nrow(loseit) 
+a = length(unique(loseit$Diet)) 
+SSE = sum(loseit$ei^2) #Sums and squares the errors (finds SSE)
+MSE = SSE/(nt-a) #Finds MSE
+eij.star = loseit.model$residuals/sqrt(MSE)
+```
+
+```{r}
+alpha = 0.05
+t.cutoff= qt(1-alpha/(2*nt), nt-a)
+t.cutoff
+CO.eij = which(abs(eij.star) > t.cutoff)
+CO.eij
+```
+
+```{r}
+rij = rstandard(loseit.model)
+CO.rij = which(abs(rij) > t.cutoff)
+CO.rij
+```
+
+### QQ plot 
+```{r}
+qqnorm(loseit.model$residuals)
+qqline(loseit.model$residuals)
+```
+### Sw test
+```{r}
+ei = loseit.model$residuals
+the.SWtest = shapiro.test(ei)
+the.SWtest
+```
+### error vs groups
+```{r}
+qplot(Diet, ei, data = loseit) +  ggtitle("Errors vs. Groups") + xlab("Groups") + ylab("Errors") + geom_hline(yintercept = 0,col = "purple")
+```
+### Brown-forsyth test
+```{r}
+library(car)
+the.BFtest = leveneTest(ei~ Diet, data=loseit, center=median)
+p.val = the.BFtest[[3]][1]
+p.val
+```
+
+###CI
+```{r}
+group.means =  by(loseit$Loss, loseit$Diet,mean)
+group.nis = by(loseit$Loss,loseit$Diet,length)
+loseit.model = lm(Loss ~ Diet, data = loseit)
+anova.table = anova(loseit.model)
+MSE = anova.table[2,3]
+nt = sum(group.nis)
+a = length(group.means)
+alpha = 0.05
+```
+##tukey a vs b
+```{r}
+Tuk = qtukey(1-alpha,a,nt-a)/sqrt(2)
+Tuk
+S = sqrt((a-1)*qf(1-alpha, a-1, nt-a))
+S
+g=3
+B = qt(1-alpha/(2*g),nt-a)
+B
+ci = c(1,-1,0)
+give.me.CI(group.means,group.nis,ci,MSE,Tuk)
+```
+### a vs c
+```{r}
+ci1 = c(1,0,-1)
+give.me.CI(group.means,group.nis,ci1,MSE,Tuk)
+```
+## b vs c
+```{r}
+ci = c(0,1,-1)
+give.me.CI(group.means,group.nis,ci,MSE,Tuk)
+```
+
+```{r}
+library(asbio)
+tukeyCI(loseit$Loss, loseit$Diet, conf.level = 1-alpha)
+```
+
+## power
+```{r}
+the.power = give.me.power(group.means,group.nis,MSE,0.05)
+the.power
+```
+
+##f test
+```{r}
+loseit.model = lm(Loss ~ Diet, data = loseit)
+anova.table = anova(loseit.model)
+anova.table
+```
+## sample size
+```{r}
+overall.mean = sum(group.means*group.nis)/sum(group.nis)
+effect.size = sqrt( sum( group.nis/sum(group.nis) *(group.means -overall.mean)^2 )/MSE)
+library(pwr)
+pwr.anova.test(k = 3, f = effect.size, sig.level = 0.05, power = 0.95)
+```
+### contrast
+```{r}
+t.value = qt(1-0.05/2, sum(group.nis) - length(group.nis))
+ci.1 = c(1/2,1/2,-1) 
+CI1 = give.me.CI(group.means,group.nis,ci.1,MSE,t.value)
+CI1
+```
+
+
+
+
+
+
+
+
+
+
